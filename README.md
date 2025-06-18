@@ -8,7 +8,15 @@ movement is ignored so that the rover cannot slip past the obstacle diagonally.
 ## Running the tests
 
 Execute the unit tests with:
-
 ```bash
 python3 -m unittest discover
 ```
+
+## Running the REST API
+
+Install Flask if it is not already available and start the server:
+```bash
+python3 -m pip install Flask
+python3 server.py
+```
+Open `http://localhost:5000` in a browser to see the simple UI and control the rover.
