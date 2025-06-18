@@ -2,38 +2,45 @@ from flask import Flask, jsonify, request
 from plateau import Plateau
 from rover import Rover
 
-app = Flask(__name__)
+class RoverAPI:
+    """Flask based API wrapper exposing rover commands."""
 
-# Initial plateau and rover setup
-plateau = Plateau(5, 5, obstacles={(2, 2)})
-rover = Rover(plateau, 0, 0, 'N')
+    def __init__(self, width=5, height=5, obstacles=None):
+        self.app = Flask(__name__)
+        self.plateau = Plateau(width, height, obstacles or [])
+        self.rover = Rover(self.plateau, 0, 0, 'N')
 
-@app.route('/status', methods=['GET'])
-def status():
-    return jsonify({
-        'x': rover.x,
-        'y': rover.y,
-        'direction': rover.direction,
-        'width': plateau.width,
-        'height': plateau.height,
-        'obstacles': sorted(list(plateau.obstacles))
-    })
+        # register routes
+        self.app.add_url_rule('/status', 'status', self.status, methods=['GET'])
+        self.app.add_url_rule('/command', 'command', self.command, methods=['POST'])
+        self.app.add_url_rule('/', 'index', self.index, methods=['GET'])
 
-@app.route('/command', methods=['POST'])
-def command():
-    data = request.get_json(force=True)
-    commands = data.get('commands')
-    if not commands:
-        return jsonify({'error': 'commands field required'}), 400
-    try:
-        rover.execute_commands(commands)
-    except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
-    return status()
+    def status(self):
+        """Return current rover state."""
+        return jsonify({
+            'x': self.rover.x,
+            'y': self.rover.y,
+            'direction': self.rover.direction,
+            'width': self.plateau.width,
+            'height': self.plateau.height,
+            'obstacles': sorted(list(self.plateau.obstacles))
+        })
 
-@app.route('/')
-def index():
-    return '''<html><head>
+    def command(self):
+        """Execute a sequence of rover commands."""
+        data = request.get_json(force=True)
+        commands = data.get('commands')
+        if not commands:
+            return jsonify({'error': 'commands field required'}), 400
+        try:
+            self.rover.execute_commands(commands)
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
+        return self.status()
+
+    def index(self):
+        """Serve a minimal HTML UI for manual control."""
+        return '''<html><head>
 <script>
 async function sendCmd(){
   const cmd = document.getElementById("cmd").value;
@@ -56,6 +63,10 @@ window.onload=load;
 <input id='cmd'/>
 <button onclick='sendCmd()'>Send</button>
 </body></html>'''
+
+# instantiate default API for module level access
+api = RoverAPI()
+app = api.app
 
 if __name__ == '__main__':
     app.run()
