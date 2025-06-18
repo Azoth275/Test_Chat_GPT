@@ -2,38 +2,48 @@ from flask import Flask, jsonify, request
 from plateau import Plateau
 from rover import Rover
 
-app = Flask(__name__)
 
-# Initial plateau and rover setup
-plateau = Plateau(5, 5, obstacles={(2, 2)})
-rover = Rover(plateau, 0, 0, 'N')
+class RoverServer:
+    """Encapsulates the Flask app and rover state."""
 
-@app.route('/status', methods=['GET'])
-def status():
-    return jsonify({
-        'x': rover.x,
-        'y': rover.y,
-        'direction': rover.direction,
-        'width': plateau.width,
-        'height': plateau.height,
-        'obstacles': sorted(list(plateau.obstacles))
-    })
+    def __init__(self, width=5, height=5, obstacles=None):
+        self.app = Flask(__name__)
+        self.plateau = Plateau(width, height, obstacles=obstacles or {(2, 2)})
+        self.rover = Rover(self.plateau, 0, 0, 'N')
+        self._register_routes()
 
-@app.route('/command', methods=['POST'])
-def command():
-    data = request.get_json(force=True)
-    commands = data.get('commands')
-    if not commands:
-        return jsonify({'error': 'commands field required'}), 400
-    try:
-        rover.execute_commands(commands)
-    except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
-    return status()
+    # ------------------------------------------------------------------
+    # route registration
+    def _register_routes(self):
+        self.app.add_url_rule('/status', view_func=self.status)
+        self.app.add_url_rule('/command', methods=['POST'], view_func=self.command)
+        self.app.add_url_rule('/', view_func=self.index)
 
-@app.route('/')
-def index():
-    return '''<html><head>
+    # ------------------------------------------------------------------
+    # endpoints
+    def status(self):
+        return jsonify({
+            'x': self.rover.x,
+            'y': self.rover.y,
+            'direction': self.rover.direction,
+            'width': self.plateau.width,
+            'height': self.plateau.height,
+            'obstacles': sorted(list(self.plateau.obstacles)),
+        })
+
+    def command(self):
+        data = request.get_json(force=True)
+        commands = data.get('commands')
+        if not commands:
+            return jsonify({'error': 'commands field required'}), 400
+        try:
+            self.rover.execute_commands(commands)
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
+        return self.status()
+
+    def index(self):
+        return '''<html><head>
 <script>
 async function sendCmd(){
   const cmd = document.getElementById("cmd").value;
@@ -57,5 +67,24 @@ window.onload=load;
 <button onclick='sendCmd()'>Send</button>
 </body></html>'''
 
+    # ------------------------------------------------------------------
+    def reset(self):
+        """Reset rover state to the origin facing north."""
+        self.rover.x = 0
+        self.rover.y = 0
+        self.rover.direction = 'N'
+
+
+def create_server(width=5, height=5, obstacles=None):
+    """Factory returning a configured :class:`RoverServer`."""
+    return RoverServer(width, height, obstacles)
+
+
+def create_app(width=5, height=5, obstacles=None):
+    """Factory returning a Flask app for external use."""
+    return create_server(width, height, obstacles).app
+
+
 if __name__ == '__main__':
-    app.run()
+    # Run a standalone server instance for manual testing
+    create_app().run()
