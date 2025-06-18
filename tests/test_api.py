@@ -1,13 +1,13 @@
 import unittest
-from server import app, rover
+from server import api
 
 class APITestCase(unittest.TestCase):
     def setUp(self):
-        self.client = app.test_client()
+        self.client = api.app.test_client()
         # reset rover state
-        rover.x = 0
-        rover.y = 0
-        rover.direction = 'N'
+        api.rover.x = 0
+        api.rover.y = 0
+        api.rover.direction = 'N'
 
     def test_status_endpoint(self):
         resp = self.client.get('/status')
