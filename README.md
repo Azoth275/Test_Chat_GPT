@@ -14,9 +14,9 @@ python3 -m unittest discover
 
 ## Running the REST API
 
-Install Flask if it is not already available and start the server:
+Install the required dependencies and start the server:
 ```bash
-python3 -m pip install Flask
+python3 -m pip install -r requirements.txt
 python3 server.py
 ```
 Open `http://localhost:5000` in a browser to see the simple UI and control the rover.
